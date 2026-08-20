@@ -3,6 +3,7 @@ import { ConsumerSnapshot } from '../models/ConsumerSnapshot.js';
 import { BillHistory } from '../models/BillHistory.js';
 import { OutageHistory } from '../models/OutageHistory.js';
 import { AnalysisReport } from '../models/AnalysisReport.js';
+import { getGroqApiKey } from '../config/env.js';
 
 /**
  * Helper to ensure the user owns the reference
@@ -182,7 +183,7 @@ export const getLatestReport = async (req, res) => {
 };
 
 /**
- * Generate AI-powered analysis report using OpenRouter (DeepSeek)
+ * Generate AI-powered analysis report using Groq
  * Limit: 2 reports per user per day
  */
 export const generateReport = async (req, res) => {
@@ -251,9 +252,10 @@ Respond in EXACTLY this JSON format (no markdown, no code blocks, just raw JSON)
 Keep each insight/recommendation under 20 words. Be specific with numbers. Focus on patterns and anomalies.`;
 
     // Call Groq API (free tier) — OpenAI-compatible endpoint
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = getGroqApiKey();
     if (!apiKey) {
-      return res.status(500).json({ message: 'AI service not configured. Set GROQ_API_KEY in environment.' });
+      console.error('[Report] GROQ_API_KEY is missing; cannot generate AI report');
+      return res.status(503).json({ message: 'AI report service is not configured. Set GROQ_API_KEY in the backend environment.' });
     }
 
     const aiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {

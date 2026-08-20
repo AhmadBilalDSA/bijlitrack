@@ -1,0 +1,50 @@
+Lesco-Electricity-Moniter/
+├─ .agents/
+├─ .vscode/
+│  └─ settings.json
+├─ apps/
+│  ├─ backend/
+│  │  ├─ logs/
+│  │  ├─ src/
+│  │  │  ├─ config/
+│  │  │  ├─ controllers/
+│  │  │  ├─ data/
+│  │  │  ├─ jobs/
+│  │  │  ├─ middlewares/
+│  │  │  ├─ models/
+│  │  │  ├─ routes/
+│  │  │  ├─ services/
+│  │  │  ├─ tests/
+│  │  │  ├─ utils/
+│  │  │  └─ index.js
+│  │  ├─ .env
+│  │  ├─ .env.example
+│  │  ├─ package.json
+│  │  ├─ Procfile
+│  │  └─ railway.json
+│  └─ frontend/
+│     ├─ public/
+│     ├─ src/
+│     │  ├─ app/
+│     │  ├─ components/
+│     │  ├─ hooks/
+│     │  └─ lib/
+│     ├─ .gitignore
+│     ├─ AGENTS.md
+│     ├─ CLAUDE.md
+│     ├─ components.json
+│     ├─ eslint.config.mjs
+│     ├─ next-env.d.ts
+│     ├─ next.config.ts
+│     ├─ package.json
+│     ├─ postcss.config.mjs
+│     ├─ railway.json
+│     ├─ README.md
+│     └─ tsconfig.json
+├─ .gitattributes
+├─ .gitignore
+├─ bijlitrackinfo.md
+├─ package-lock.json
+├─ package.json
+├─ project-tree.txt
+└─ README.md

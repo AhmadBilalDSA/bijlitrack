@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import dns from "node:dns";
+import { warnAboutMissingOptionalEnv } from "./config/env.js";
 
 // Routes
 import authRoutes from "./routes/auth.routes.js";
@@ -11,6 +12,7 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import complaintRoutes from "./routes/complaint.routes.js";
 
 dotenv.config();
+warnAboutMissingOptionalEnv();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

@@ -122,11 +122,15 @@ SMTP_SECURE=true
 SMTP_USER=your-email@example.com
 SMTP_PASS=your-app-password
 
+# AI reports
+GROQ_API_KEY=your-groq-api-key
+
 # Development only. Keep false/omit in production.
 RETURN_PASSWORD_RESET_LINK=false
 ```
 
 For Gmail, `SMTP_PASS` should be an app password, not your normal Gmail password.
+For Railway deployments, add `GROQ_API_KEY` to the backend service variables; local `.env` files are not uploaded automatically.
 
 ### Running
 
