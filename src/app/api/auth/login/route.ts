@@ -17,13 +17,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log(`[Auth] Login attempt for: ${normalizedEmail}`);
+
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
+      console.warn(`[Auth] Login failed - user not found in database: ${normalizedEmail}`);
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      console.warn(`[Auth] Login failed - incorrect password for: ${normalizedEmail}`);
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
     }
 
