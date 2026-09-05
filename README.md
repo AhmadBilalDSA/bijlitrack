@@ -1,13 +1,14 @@
 # ⚡ BijliTrack — Smart Electricity Dashboard
 
-A full-stack web application that helps Pakistani consumers monitor their electricity bills, power outages, feeder status, and complaint history — all from a single, clean dashboard.
+A unified, full-stack Next.js web application that helps Pakistani consumers monitor their electricity bills, power outages, feeder status, and complaint history — all from a single, clean dashboard with seamless 1-click hosting on Vercel.
 
 > **Data Source:** All data is fetched from official [CCMS/PITC](https://ccms.pitc.com.pk) public services.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)
-![Express](https://img.shields.io/badge/Express-4.19-blue?logo=express)
+![React](https://img.shields.io/badge/React-19-blue?logo=react)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb)
 ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-38bdf8?logo=tailwindcss)
+![Vercel](https://img.shields.io/badge/Vercel-Ready-black?logo=vercel)
 
 ---
 
@@ -24,96 +25,86 @@ A full-stack web application that helps Pakistani consumers monitor their electr
 | **Complaint Tracking** | Search complaints by reference number or ticket number |
 | **Consumer Info** | Name, address, CNIC, meter number, connection type, tariff |
 | **Load Schedule** | 24-hour scheduled maintenance grid |
+| **AI Reports** | Automated Groq AI-generated consumption insights |
 | **Dark/Light Mode** | Full theme support |
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture (Unified Next.js Full-Stack)
+
+The project is structured as a **single, unified Next.js 16 application**:
 
 ```
-bijlitrack-monorepo/
-├── apps/
-│   ├── backend/        → Express.js REST API + MongoDB
-│   └── frontend/       → Next.js 16 (App Router) + React 19
-├── package.json        → npm workspaces orchestrator
+BijliTrack/
+├── src/
+│   ├── app/
+│   │   ├── api/                  → Next.js Route Handlers (Serverless Backend)
+│   │   │   ├── auth/             → Signup, Login, Password Reset, Profile
+│   │   │   ├── reference/        → Track, list, delete reference numbers
+│   │   │   ├── dashboard/        → Snapshots, bill history, outage history, AI reports
+│   │   │   ├── complaints/       → PITC CCMS complaint scraping
+│   │   │   └── cron/             → Vercel Cron automated daily tracking
+│   │   ├── dashboard/            → Protected dashboard pages
+│   │   ├── (auth)/               → Login, signup, password recovery
+│   │   ├── layout.tsx            → Root layout & providers
+│   │   └── page.tsx              → Landing page
+│   ├── components/               → UI components (shadcn/ui + Radix + Tailwind 4)
+│   ├── hooks/                    → Custom React hooks (useAuth)
+│   └── lib/
+│       ├── api.ts                → Axios client (same-origin /api calls)
+│       ├── ccms.ts               → Direct client-side CCMS fetcher
+│       └── server/               → Serverless utilities (Mongoose, Auth, Services)
+│           ├── db.ts             → Cached MongoDB connection pooling
+│           ├── auth.ts           → JWT token validation & bcryptjs
+│           ├── models/           → Mongoose schemas (User, Reference, Bill, Outage, etc.)
+│           └── services/         → CCMS scraping, Nodemailer, Outage synchronization
+├── public/                       → Static assets
+├── vercel.json                   → Vercel Cron configuration
+└── package.json                  → Dependencies & build scripts
 ```
 
-**Monorepo** managed with npm workspaces. Run both apps with a single command.
-
-### Data Flow
-
-```
-User's Browser (Pakistani IP)
-├── Calls CCMS APIs directly (bypasses geo-blocking)
-│   ├── GET /api/details/user?reference=...
-│   ├── GET /api/details/bill?reference=...
-│   └── GET /get-loadinfo/...
-│
-└── Sends data to Backend (Railway)
-    ├── POST /dashboard/:refId/save    ← Store snapshot
-    ├── GET  /dashboard/:refId         ← Retrieve stored data
-    ├── Auth (signup/login/me)
-    └── Reference management
-```
+### Key Highlights
+- **No Separate Backend Server Needed**: The API runs as native Next.js Route Handlers (`/api/*`) on Vercel Serverless Functions.
+- **Zero CORS Issues**: All client requests resolve directly to `/api/...` on the same domain.
+- **Automated Outage Cron Job**: Uses Vercel Cron (`vercel.json`) to trigger daily tracking without needing a 24/7 background process.
 
 ---
 
-## 🛠️ Tech Stack
-
-### Backend
-- **Express.js 4.19** — REST API (ES Modules)
-- **MongoDB** (Mongoose 8.4) — Data persistence (Atlas)
-- **JWT** (jsonwebtoken) — Authentication (7-day tokens)
-- **bcrypt** — Password hashing
-- **node-cron** — Daily outage tracking scheduler
-- **cheerio** — HTML parsing for complaint history
-- **Vitest** — Testing framework
-- **CCMS/PITC APIs** — Data source (get-loadinfo, user details, bill details)
-
-### Frontend
-- **Next.js 16.2.9** — App Router, Turbopack
-- **React 19.2** — UI rendering
-- **TypeScript 5** — Type safety
-- **Tailwind CSS 4** + **shadcn/ui** + **Radix UI** — Styling and components
-- **TanStack React Query 5** — Server state management
-- **Recharts 3** — Charts and graphs
-- **Axios** — HTTP client
-- **React Hook Form 7** + **Zod 4** — Form validation
-- **Sonner** — Toast notifications
-- **next-themes** — Dark/light mode
-- **Lucide React** — Icons
-
----
-
-## 🚀 Getting Started
+## 🚀 Getting Started Locally
 
 ### Prerequisites
 - Node.js 18+
-- MongoDB (local or Atlas)
+- MongoDB database (local or MongoDB Atlas)
 
 ### Installation
 
 ```bash
-# Clone the repo
+# Clone the repository
 git clone https://github.com/ahmmikun/Lesco-Electricity-Moniter.git
 cd Lesco-Electricity-Moniter
 
-# Install all dependencies (both apps)
+# Install all dependencies
 npm install
 ```
 
-### Environment Setup
+### Environment Configuration
 
-Create `apps/backend/.env`:
+Create a `.env.local` file in the root directory (or copy from `.env.example`):
 
 ```env
-PORT=5000
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/bijlitrack
-JWT_SECRET=your-secret-key-here
-FRONTEND_URL=http://localhost:3000
-ALLOWED_ORIGINS=http://localhost:3000,https://bijlitrack.up.railway.app
+# MongoDB Atlas Connection URI
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/bijlitrack?retryWrites=true&w=majority
 
-# Password reset emails
+# JWT Secret for Session Authentication
+JWT_SECRET=your-secure-random-jwt-secret-key-here
+
+# Optional: Groq API Key for AI Analysis Reports
+GROQ_API_KEY=gsk_your_groq_api_key
+
+# Optional: Vercel Cron authorization secret
+CRON_SECRET=your-random-cron-secret-token
+
+# Optional: SMTP Email service for password reset emails
 APP_NAME=BijliTrack
 MAIL_FROM="BijliTrack <no-reply@example.com>"
 SMTP_HOST=smtp.gmail.com
@@ -121,27 +112,34 @@ SMTP_PORT=465
 SMTP_SECURE=true
 SMTP_USER=your-email@example.com
 SMTP_PASS=your-app-password
-
-# AI reports
-GROQ_API_KEY=your-groq-api-key
-
-# Development only. Keep false/omit in production.
-RETURN_PASSWORD_RESET_LINK=false
 ```
 
-For Gmail, `SMTP_PASS` should be an app password, not your normal Gmail password.
-For Railway deployments, add `GROQ_API_KEY` to the backend service variables; local `.env` files are not uploaded automatically.
-
-### Running
+### Running Locally
 
 ```bash
-# Run both frontend + backend simultaneously
 npm run dev
-
-# Or run individually
-npm run backend    # Express on http://localhost:5000
-npm run frontend   # Next.js on http://localhost:3000
 ```
+
+Open [http://localhost:3000](http://localhost:3000) to view the application and APIs.
+
+---
+
+## 🚢 Deploying to Vercel (1-Click)
+
+Because BijliTrack is a standard unified Next.js project, deploying to Vercel requires zero complex setup:
+
+1. Push your repository to GitHub.
+2. Go to [vercel.com](https://vercel.com) and click **"Add New Project"**.
+3. Import your **BijliTrack** repository (Vercel will automatically detect **Next.js**).
+4. Add the following **Environment Variables** in the Vercel dashboard:
+   - `MONGODB_URI` — Your MongoDB Atlas connection string
+   - `JWT_SECRET` — A secure random string for JWT token generation
+   - `GROQ_API_KEY` (Optional) — For AI report generation
+   - `CRON_SECRET` (Optional) — Secret to protect the `/api/cron/daily-tracker` endpoint
+   - SMTP variables (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, etc., optional for password resets)
+5. Click **Deploy**.
+
+That's it! Your entire full-stack application (frontend + API + database connection + cron jobs) is live.
 
 ---
 
@@ -156,47 +154,33 @@ npm run frontend   # Next.js on http://localhost:3000
 | POST | `/api/auth/reset-password` | Set new password from reset token |
 | GET | `/api/auth/me` | Get current user (protected) |
 
-### Reference Management (all protected)
+### Reference Management (Protected)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/reference/track` | Start tracking a reference number |
 | GET | `/api/reference/my` | Get user's tracked references |
 | DELETE | `/api/reference/:id` | Remove tracked reference + all data |
 
-### Dashboard (all protected)
+### Dashboard (Protected)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/dashboard/:refId` | Get latest saved snapshot |
-| POST | `/api/dashboard/:refId/save` | Frontend sends CCMS data to store |
+| POST | `/api/dashboard/:refId/save` | Save CCMS data snapshot |
 | GET | `/api/dashboard/:refId/billing` | Bill history records |
 | GET | `/api/dashboard/:refId/outages` | Outage history with hourly data |
-| GET | `/api/dashboard/:refId/report` | Analysis report |
+| GET | `/api/dashboard/:refId/report` | Latest AI analysis report |
+| POST | `/api/dashboard/:refId/report/generate` | Generate AI report (Groq) |
 
-### Complaints (all protected)
+### Complaints (Protected)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/complaints/track-by-reference?referenceNo=...` | Complaint history by reference |
 | GET | `/api/complaints/track-by-ticket?ticketNo=...` | Track by ticket number |
 
----
-
-## 📊 How Outage Tracking Works
-
-1. User adds a 14-digit reference number and selects tracking duration (7/14/30 days)
-2. Frontend fetches data directly from CCMS `get-loadinfo` API (client-side, avoids geo-blocking)
-3. The API returns `history_data` — hourly outage minutes for the last 3-4 days
-4. Frontend sends this data to the backend for persistent storage via `/dashboard/:refId/save`
-5. Backend also has a sync service for server-side daily cron jobs
-6. Over time, outage history accumulates in the database
-7. Users can export all tracked data as PDF
-
-**Data format:** Each hour has a value 0-60 representing minutes of outage. Example:
-```
-[0,0,0,0,0,0,0,0,0,0,0,0,0,0,20,55,0,0,0,0,0,0,0,0]
-                                ↑  ↑
-                           14:00  15:00
-                           20min  55min OFF → Total: 1h 15m outage
-```
+### Cron
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/cron/daily-tracker` | Daily outage synchronization job (Vercel Cron) |
 
 ---
 
@@ -206,33 +190,7 @@ BijliTrack works with all PITC/CCMS supported public-sector DISCOs:
 
 `LESCO` `GEPCO` `FESCO` `IESCO` `MEPCO` `PESCO` `HESCO` `SEPCO` `QESCO` `TESCO` `AJ&K`
 
-> ⚠️ **K-Electric is NOT supported** as it uses a different system.
-
----
-
-## 📱 Pages
-
-| Route | Page |
-|-------|------|
-| `/` | Landing page |
-| `/login` `/signup` | Authentication |
-| `/dashboard` | Overview with account cards |
-| `/dashboard/details` | Detailed account view (consumer, bill, feeder, schedule) |
-| `/dashboard/billing` | Bill history charts + table |
-| `/dashboard/outages` | Outage timeline, daily chart, PDF export |
-| `/dashboard/complaints` | Track complaints by reference/ticket |
-| `/dashboard/lookup` | Add new reference number |
-| `/dashboard/reports` | Analysis reports |
-| `/dashboard/about` | About, disclaimer, coverage info |
-| `/dashboard/settings` | User settings |
-
----
-
-## 🚢 Deployment
-
-- **Backend**: Railway — Node.js, connects to MongoDB Atlas
-- **Frontend**: Railway — Next.js standalone build
-- CCMS calls happen from user's browser (not server) to avoid geo-blocking
+> ⚠️ **K-Electric is NOT supported** as it uses a separate private infrastructure.
 
 ---
 
@@ -247,7 +205,3 @@ Data is collected from publicly available official CCMS/PITC services. We do not
 ## 📄 License
 
 ISC
-
----
-
-Built with ❤️ for Pakistani electricity consumers who deserve better tools.
