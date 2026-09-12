@@ -39,3 +39,6 @@ logs/
 # Scratch data
 src/data/*.json
 src/data/*.png
+
+.vercel
+.env*
