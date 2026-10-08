@@ -47,9 +47,12 @@ export async function GET(req: NextRequest) {
         durationMs: Date.now() - startTime,
       },
     });
-  } catch (error: any) {
+} catch (error: unknown) {
     return NextResponse.json(
-      { success: false, error: error.message || "Unknown processing fault" },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Internal Error",
+      },
       { status: 500 }
     );
   }
