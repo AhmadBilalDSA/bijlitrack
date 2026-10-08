@@ -10,8 +10,12 @@ export const dynamic = 'force-dynamic';
 const MAX_TOKENS = 600;
 
 const RoastRequestSchema = z.object({
-  totalUnits: z.number().nonnegative(),
-  totalAmount: z.number().nonnegative(),
+  totalUnits: z
+    .number()
+    .int('totalUnits must be a whole number of kWh')
+    .positive('totalUnits must be greater than zero')
+    .max(100_000, 'totalUnits exceeds the plausible maximum for one billing cycle'),
+  totalAmount: z.number().nonnegative('totalAmount cannot be negative'),
   disco: z.string().min(1).max(120),
   isProtected: z.boolean(),
   billingMonth: z.string().min(1).max(60),

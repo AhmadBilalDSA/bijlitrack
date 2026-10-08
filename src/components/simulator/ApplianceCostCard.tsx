@@ -60,7 +60,7 @@ export function ApplianceCostCard() {
               Appliance Run Cost
             </CardTitle>
             <CardDescription className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest mt-1">
-              What is your gear actually costing you
+              Running cost per appliance, including GST
             </CardDescription>
           </div>
           <div className="h-11 w-11 rounded-2xl bg-primary flex items-center justify-center shrink-0">

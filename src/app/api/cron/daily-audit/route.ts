@@ -6,15 +6,23 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
 
-  const authHeader = req.headers.get("authorization");
-  const expectedSecret = process.env.CRON_SECRET;
+const authHeader = req.headers.get("authorization");
+  const expectedSecret = process.env.CRON_SECRET?.trim();
 
-  if (
-    process.env.NODE_ENV === "production" &&
-    (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`)
-  ) {
+  // Enforced whenever a secret is configured, in every environment. Gating this
+  // on NODE_ENV left preview deployments callable by anyone.
+  if (expectedSecret) {
+    if (authHeader !== `Bearer ${expectedSecret}`) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized: Invalid execution context" },
+        { status: 401 }
+      );
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    // Failing closed in production prevents an unset secret from disabling auth.
+    console.error("[Cron] CRON_SECRET is unset; refusing to run daily-audit.");
     return NextResponse.json(
-      { success: false, error: "Unauthorized: Invalid execution context" },
+      { success: false, error: "Unauthorized: CRON_SECRET is not configured" },
       { status: 401 }
     );
   }

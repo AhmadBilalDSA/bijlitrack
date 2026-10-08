@@ -314,7 +314,7 @@ export function AuditReportCard({ billData, auditFindings }: AuditReportCardProp
               Bill Roast
             </CardTitle>
             <CardDescription className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest mt-1">
-              Claude reads your consumption and judges it lovingly
+              Two lines of commentary on your consumption
             </CardDescription>
           </div>
 

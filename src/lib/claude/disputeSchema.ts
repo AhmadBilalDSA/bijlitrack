@@ -2,16 +2,18 @@ import { z } from 'zod';
 
 export const DisputeRequestSchema = z.object({
   billData: z.object({
-    consumerName: z.string().min(1, 'consumerName is required'),
-    referenceNo: z.string().min(1, 'referenceNo is required'),
-    disco: z.string().min(1, 'disco is required'),
-    billingMonth: z.string().min(1, 'billingMonth is required'),
-    totalAmount: z.number().nonnegative(),
+    consumerName: z.string().trim().min(1).max(120, 'consumerName is too long'),
+    referenceNo: z.string().trim().min(1).max(20, 'referenceNo is too long'),
+    disco: z.string().trim().min(1).max(120, 'disco is too long'),
+    billingMonth: z.string().trim().min(1).max(60, 'billingMonth is too long'),
+    totalAmount: z.number().nonnegative().max(10_000_000),
   }),
   auditFindings: z.object({
-    discrepancyAmount: z.number(),
-    issuesDetected: z.array(z.string()),
-    recommendedAction: z.string(),
+    discrepancyAmount: z.number().max(10_000_000),
+    issuesDetected: z
+      .array(z.string().trim().min(1).max(500))
+      .max(20, 'Too many findings supplied'),
+    recommendedAction: z.string().trim().min(1).max(500),
   }),
 });
 

@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import api from '@/lib/api';
 import { fetchAllCCMSData, fetchFeederStatus } from '@/lib/ccms';
+import type { ParsedLoadInfo } from '@/lib/ccms.types';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,11 +47,15 @@ interface FeederInfo {
 }
 
 /** Consolidated CCMS snapshot attached to a reference. */
+/**
+ * A CCMS snapshot as stored on the reference document. Blocks are nullable
+ * because a partial fetch records which calls succeeded.
+ */
 interface CcmsSnapshot {
-  consumerInfo?: ConsumerInfo;
-  billingInfo?: BillingInfo;
-  outageInfo?: FeederInfo;
-  loadManagementInfo?: FeederInfo;
+  consumerInfo?: ConsumerInfo | null;
+  billingInfo?: BillingInfo | null;
+  outageInfo?: ParsedLoadInfo | null;
+  loadManagementInfo?: ParsedLoadInfo | null;
   lastUpdated?: string;
 }
 

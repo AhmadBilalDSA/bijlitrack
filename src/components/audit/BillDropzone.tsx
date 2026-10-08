@@ -9,7 +9,7 @@ import type { ParsedBill } from '@/lib/claude/billSchema';
 import type { AuditReport } from '@/lib/claude/auditEngine';
 
 const MAX_BYTES = 4.5 * 1024 * 1024;
-const ACCEPTED = ['application/pdf', 'image/jpeg', 'image/png'];
+const ACCEPTED = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 
 export interface AuditParseResponse {
   success: boolean;
@@ -131,7 +131,7 @@ export function BillDropzone({ onParsed }: BillDropzoneProps) {
               {isLoading ? 'Claude Vision is reading your bill' : 'Drop your bill here'}
             </p>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              PDF, JPEG or PNG &middot; Max 4.5MB
+              PDF, JPEG, PNG or WebP &middot; Max 4.5MB
             </p>
           </div>
 
