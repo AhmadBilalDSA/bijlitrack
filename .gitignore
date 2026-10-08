@@ -42,3 +42,6 @@ src/data/*.png
 
 .vercel
 .env*
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo

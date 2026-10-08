@@ -1,0 +1,348 @@
+'use client';
+
+import { ShieldCheck, ShieldAlert, Lightbulb, Info, TrendingDown, AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
+
+interface Finding {
+  code: string;
+  severity: 'critical' | 'warning' | 'info';
+  title: string;
+  detail: string;
+  discrepancyAmount: number | null;
+}
+
+interface AuditReport {
+  status: 'verified' | 'discrepancy';
+  billedTotal: number;
+  trueLandedCost: number;
+  discrepancyAmount: number;
+  findings: Finding[];
+  loadShiftAdvice: Array<{
+    title: string;
+    detail: string;
+    peakWindow: string;
+    estimatedMonthlySaving: number | null;
+  }>;
+  disclaimer: string;
+}
+
+interface ParsedBill {
+  consumer: { name: string; referenceNo: string; disco: string; billingMonth: string };
+  tariff: { category: string; isProtected: boolean; sanctionedLoadKw: number | null };
+  consumption: { totalUnits: number; peakUnits: number | null; offPeakUnits: number | null };
+  financialBreakdown: {
+    costOfElectricity: number;
+    fca: number;
+    qta: number;
+    electricityDuty: number;
+    salesTax: number;
+    advanceIncomeTax: number;
+    totalAmount: number;
+  };
+  confidence: number;
+  warnings: string[];
+}
+
+interface AuditReportCardProps {
+  billData: ParsedBill;
+  auditFindings: AuditReport;
+}
+
+const severityStyles: Record<Finding['severity'], string> = {
+  critical: 'bg-red-500/10 text-red-500 border-red-500/20',
+  warning: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  info: 'bg-sky-500/10 text-sky-500 border-sky-500/20',
+};
+
+const severityLabels: Record<Finding['severity'], string> = {
+  critical: 'Critical',
+  warning: 'Warning',
+  info: 'Info',
+};
+
+function formatPkr(value: number): string {
+  return `Rs ${value.toLocaleString('en-PK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatKwh(value: number): string {
+  return `${value.toLocaleString('en-PK')} kWh`;
+}
+
+function MetricRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2.5 border-b border-border/50 last:border-0">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        {label}
+      </span>
+      <span className="font-mono tabular-nums text-sm font-black text-foreground">{value}</span>
+    </div>
+  );
+}
+
+export function AuditReportCard({ billData, auditFindings }: AuditReportCardProps) {
+  const isVerified = auditFindings.status === 'verified';
+  const hasDiscrepancy =
+    !isVerified && Math.abs(auditFindings.discrepancyAmount) >= 1;
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-700">
+      {/* Verdict Header */}
+      <Card
+        className={cn(
+          'border-2 overflow-hidden rounded-[3rem]',
+          isVerified
+            ? 'border-emerald-500/30 bg-emerald-500/5'
+            : 'border-amber-500/30 bg-amber-500/5'
+        )}
+      >
+        <CardHeader className="p-6 sm:p-10 border-b border-border/50">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="space-y-3">
+              <Badge
+                className={cn(
+                  'h-8 px-4 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] border',
+                  isVerified
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                    : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                )}
+              >
+                {isVerified ? (
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                ) : (
+                  <ShieldAlert className="h-3.5 w-3.5" />
+                )}
+                {isVerified ? 'Verified Legitimate' : 'Discrepancy / Overbilling Detected'}
+              </Badge>
+              <div>
+                <CardTitle className="text-xl sm:text-3xl font-black tracking-tighter uppercase text-foreground">
+                  {billData.consumer.disco || 'Utility'}{' '}
+                  <span className="text-muted-foreground">{billData.consumer.billingMonth}</span>
+                </CardTitle>
+                <CardDescription className="font-bold text-muted-foreground uppercase text-[10px] tracking-widest mt-2">
+                  Ref {billData.consumer.referenceNo || 'N/A'} &middot; {billData.tariff.category} &middot;{' '}
+                  {billData.tariff.isProtected ? 'Protected Slab' : 'Non-Protected'}
+                </CardDescription>
+              </div>
+            </div>
+
+            {hasDiscrepancy && (
+              <div className="shrink-0 text-left sm:text-right">
+                <p className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground mb-1">
+                  Discrepancy Amount
+                </p>
+                <p className="font-mono tabular-nums text-3xl sm:text-5xl font-black text-amber-500 tracking-tighter">
+                  {formatPkr(Math.abs(auditFindings.discrepancyAmount))}
+                </p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mt-2">
+                  {auditFindings.discrepancyAmount > 0 ? 'Overbilled to you' : 'Under-recovered by DISCO'}
+                </p>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6 sm:p-10">
+          <div className="grid sm:grid-cols-2 gap-x-10 gap-y-2">
+            <div>
+              <MetricRow label="Utility Billed Cost" value={formatPkr(auditFindings.billedTotal)} />
+              <MetricRow label="True Landed Cost" value={formatPkr(auditFindings.trueLandedCost)} />
+              <MetricRow
+                label="Cost of Electricity"
+                value={formatPkr(billData.financialBreakdown.costOfElectricity)}
+              />
+              <MetricRow label="FCA" value={formatPkr(billData.financialBreakdown.fca)} />
+              <MetricRow label="QTA" value={formatPkr(billData.financialBreakdown.qta)} />
+            </div>
+            <div>
+              <MetricRow
+                label="Electricity Duty"
+                value={formatPkr(billData.financialBreakdown.electricityDuty)}
+              />
+              <MetricRow
+                label="Sales Tax"
+                value={formatPkr(billData.financialBreakdown.salesTax)}
+              />
+              <MetricRow
+                label="Advance Tax (§235)"
+                value={formatPkr(billData.financialBreakdown.advanceIncomeTax)}
+              />
+              <MetricRow
+                label="Total Units"
+                value={formatKwh(billData.consumption.totalUnits)}
+              />
+              <MetricRow
+                label="Extraction Confidence"
+                value={`${Math.round(billData.confidence * 100)}%`}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Findings */}
+      <Card className="border-border shadow-2xl shadow-foreground/5 overflow-hidden rounded-[3rem]">
+        <CardHeader className="p-6 sm:p-10 border-b border-border bg-muted/20">
+          <CardTitle className="text-xl font-black tracking-tighter uppercase">
+            Audit Findings
+          </CardTitle>
+          <CardDescription className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest mt-1">
+            Cross-checked against NEPRA protected-slab and statutory tax rules
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6 sm:p-10 space-y-4">
+          {auditFindings.findings.length === 0 ? (
+            <div className="flex items-center gap-4 py-6">
+              <ShieldCheck className="h-8 w-8 text-emerald-500 shrink-0" />
+              <p className="text-sm font-bold text-muted-foreground">
+                No discrepancies detected. Every line item reconciles to the printed total.
+              </p>
+            </div>
+          ) : (
+            auditFindings.findings.map((finding) => (
+              <div
+                key={finding.code}
+                className="flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-2xl border border-border bg-background"
+              >
+                <div className="shrink-0 mt-0.5">
+                  {finding.severity === 'info' ? (
+                    <Info className="h-5 w-5 text-sky-500" />
+                  ) : (
+                    <AlertTriangle
+                      className={cn(
+                        'h-5 w-5',
+                        finding.severity === 'critical' ? 'text-red-500' : 'text-amber-500'
+                      )}
+                    />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2 min-w-0">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-sm font-black tracking-tight text-foreground">
+                      {finding.title}
+                    </span>
+                    <Badge
+                      className={cn(
+                        'h-5 px-2 rounded-lg font-black text-[9px] uppercase tracking-widest border',
+                        severityStyles[finding.severity]
+                      )}
+                    >
+                      {severityLabels[finding.severity]}
+                    </Badge>
+                  </div>
+                  <p className="text-xs font-medium leading-relaxed text-muted-foreground">
+                    {finding.detail}
+                  </p>
+                  <span className="inline-block font-mono text-[9px] text-muted-foreground/50 uppercase tracking-wider">
+                    {finding.code}
+                  </span>
+                </div>
+                {finding.discrepancyAmount !== null && (
+                  <div className="shrink-0 sm:text-right">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                      Impact
+                    </p>
+                    <p
+                      className={cn(
+                        'font-mono tabular-nums text-base font-black',
+                        finding.discrepancyAmount > 0 ? 'text-red-500' : 'text-emerald-500'
+                      )}
+                    >
+                      {formatPkr(Math.abs(finding.discrepancyAmount))}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Load shift advice */}
+      {auditFindings.loadShiftAdvice.length > 0 && (
+        <Card className="border-border shadow-2xl shadow-foreground/5 overflow-hidden rounded-[3rem]">
+          <CardHeader className="p-6 sm:p-10 border-b border-border bg-muted/20">
+            <div className="flex items-center gap-4">
+              <div className="h-11 w-11 rounded-2xl bg-primary flex items-center justify-center shrink-0">
+                <Lightbulb className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-black tracking-tighter uppercase">
+                  Peak-Hour Load Shifting
+                </CardTitle>
+                <CardDescription className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest mt-1">
+                  Lower your next bill without changing your habits
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 sm:p-10 space-y-6">
+            {auditFindings.loadShiftAdvice.map((advice) => (
+              <div key={advice.title} className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <TrendingDown className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-black tracking-tight text-foreground">
+                    {advice.title}
+                  </span>
+                </div>
+                <p className="text-xs font-medium leading-relaxed text-muted-foreground pl-7">
+                  {advice.detail}
+                </p>
+                <div className="flex flex-wrap gap-4 pl-7">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full border border-border">
+                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
+                      Peak Window
+                    </span>
+                    <span className="font-mono tabular-nums text-[10px] font-black text-foreground">
+                      {advice.peakWindow}
+                    </span>
+                  </div>
+                  {advice.estimatedMonthlySaving !== null && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                      <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                        Est. Saving
+                      </span>
+                      <span className="font-mono tabular-nums text-[10px] font-black text-emerald-600 dark:text-emerald-400">
+                        {formatPkr(advice.estimatedMonthlySaving)}/mo
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Parser warnings */}
+      {billData.warnings.length > 0 && (
+        <Alert className="rounded-[2rem] border-2 border-amber-500/20 bg-amber-500/5 p-6">
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          <div className="ml-3">
+            <AlertTitle className="text-xs font-black uppercase tracking-widest">
+              Extraction Warnings
+            </AlertTitle>
+            <AlertDescription className="mt-2 space-y-1">
+              {billData.warnings.map((warning, i) => (
+                <p key={i} className="text-xs font-medium">
+                  &bull; {warning}
+                </p>
+              ))}
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
+
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/50 text-center leading-relaxed">
+        {auditFindings.disclaimer}
+      </p>
+    </div>
+  );
+}
+
+export default AuditReportCard;
