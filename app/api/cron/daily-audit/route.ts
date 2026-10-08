@@ -1,0 +1,56 @@
+﻿import { NextRequest, NextResponse } from "next/server";
+
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
+export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+
+  const authHeader = req.headers.get("authorization");
+  const expectedSecret = process.env.CRON_SECRET;
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`)
+  ) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized: Invalid execution context" },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const origin = req.nextUrl.origin;
+
+    const scrapeRes = await fetch(`${origin}/api/tariffs/scrape-update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }).catch((e) => {
+      console.warn("[BijliTrack Cron] Warning on scraper endpoint:", e.message);
+      return null;
+    });
+
+    const auditRes = await fetch(`${origin}/api/audit/batch-validate`, {
+      method: "POST",
+    }).catch((e) => {
+      console.warn("[BijliTrack Cron] Warning on audit run:", e.message);
+      return null;
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        job: "daily-audit-and-tariff-sync",
+        executedAt: new Date().toISOString(),
+        scrapeStatus: scrapeRes ? "TRIGGERED" : "SKIPPED_LOCAL",
+        batchAuditStatus: auditRes ? "TRIGGERED" : "SKIPPED_LOCAL",
+        durationMs: Date.now() - startTime,
+      },
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Unknown processing fault" },
+      { status: 500 }
+    );
+  }
+}
