@@ -5,15 +5,65 @@ import { useState } from 'react';
 import api from '@/lib/api';
 import { fetchAllCCMSData, fetchFeederStatus } from '@/lib/ccms';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Search, Activity, CalendarClock, Zap, Receipt, MapPin, AlertCircle, ArrowRight, RefreshCw, BarChart3, User, Clock } from 'lucide-react';
+import { Search, Activity, CalendarClock, Zap, Receipt, MapPin, AlertCircle, ArrowRight, RefreshCw, User, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { OutageRadarCard } from '@/components/radar/OutageRadarCard';
 import Link from 'next/link';
 import { toast } from 'sonner';
+
+/** Saved reference record as returned by /reference/my. */
+interface ReferenceSummary {
+  _id: string;
+  referenceNo: string;
+  referenceNoLast4: string;
+}
+
+/** CCMS consumer block. */
+interface ConsumerInfo {
+  NAME?: string;
+}
+
+/** CCMS billing block; `basicInfo` carries the headline invoice figures. */
+interface BillingInfo {
+  basicInfo?: {
+    netBill?: number;
+    billDueDate?: string;
+  };
+}
+
+/** CCMS load/feeder block. */
+interface FeederInfo {
+  feederName?: string;
+  feederCode?: string;
+  currentStatus?: string;
+  expectedRestorationTime?: string;
+  voltage?: number;
+  powerFactor?: number;
+}
+
+/** Consolidated CCMS snapshot attached to a reference. */
+interface CcmsSnapshot {
+  consumerInfo?: ConsumerInfo;
+  billingInfo?: BillingInfo;
+  outageInfo?: FeederInfo;
+  loadManagementInfo?: FeederInfo;
+  lastUpdated?: string;
+}
+
+/** A reference joined with its latest CCMS snapshot. */
+interface DashboardReference extends ReferenceSummary {
+  details?: CcmsSnapshot;
+}
+
+/** Live polled feeder status from fetchFeederStatus. */
+interface LiveFeederStatus {
+  currentStatus: string;
+  expectedRestorationTime: string | null;
+}
 
 export default function DashboardOverview() {
   const { activeRefId, setActiveRefId } = useAuth();
@@ -27,13 +77,15 @@ export default function DashboardOverview() {
       
       if (!Array.isArray(res.data)) return [];
 
-      const detailedRefs = await Promise.all(res.data.map(async (ref: any) => {
+      const summaries = res.data as ReferenceSummary[];
+
+      const detailedRefs: DashboardReference[] = await Promise.all(summaries.map(async (ref): Promise<DashboardReference> => {
         try {
           const summaryRes = await api.get(`/dashboard/${ref._id}`);
-          const details = summaryRes.data;
+          const details = summaryRes.data as CcmsSnapshot;
 
           // If no data stored yet, fetch from CCMS directly and save
-          if (!details.consumerInfo && !details.billingInfo) {
+          if (!details?.consumerInfo && !details?.billingInfo) {
             try {
               const ccmsData = await fetchAllCCMSData(ref.referenceNo);
               if (ccmsData.user || ccmsData.bill) {
@@ -55,7 +107,7 @@ export default function DashboardOverview() {
           }
 
           return { ...ref, details };
-        } catch (e) {
+        } catch {
           return ref;
         }
       }));
@@ -66,8 +118,8 @@ export default function DashboardOverview() {
   });
 
   // Live feeder status polling every 3 minutes for active reference
-  const activeRef = references?.find((r: any) => r._id === activeRefId);
-  const { data: liveStatus } = useQuery({
+  const activeRef = references?.find((r) => r._id === activeRefId);
+  const { data: liveStatus } = useQuery<LiveFeederStatus>({
     queryKey: ['live-feeder-status', activeRef?.referenceNo],
     queryFn: () => fetchFeederStatus(activeRef!.referenceNo),
     enabled: !!activeRef?.referenceNo,
@@ -91,10 +143,10 @@ export default function DashboardOverview() {
       });
 
       // Immediately update local UI with fresh data (no re-fetching from backend)
-      queryClient.setQueryData(['dashboard-references'], (oldData: any) => {
+      queryClient.setQueryData(['dashboard-references'], (oldData: unknown) => {
         if (!Array.isArray(oldData)) return oldData;
 
-        return oldData.map((ref: any) => {
+        return (oldData as DashboardReference[]).map((ref) => {
           if (ref._id !== id) return ref;
 
           return {
@@ -128,8 +180,11 @@ export default function DashboardOverview() {
       queryClient.invalidateQueries({ queryKey: ['live-feeder-status', referenceNo] });
 
       toast.success("Account data updated", { id: toastId });
-    } catch (err: any) {
-      toast.error(err.message || "Update failed", { id: toastId });
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : "Update failed",
+        { id: toastId }
+      );
     } finally {
       setSyncingRefId(null);
     }
@@ -161,7 +216,7 @@ export default function DashboardOverview() {
           <AlertCircle className="h-5 w-5" />
           <AlertTitle className="font-black text-lg">Connection Failed</AlertTitle>
           <AlertDescription className="flex flex-col gap-6 mt-4">
-            <p className="font-bold opacity-80 leading-relaxed uppercase text-xs tracking-widest">We couldn't reach the server. Please check your connection and try again.</p>
+            <p className="font-bold opacity-80 leading-relaxed uppercase text-xs tracking-widest">We couldn&rsquo;t reach the server. Please check your connection and try again.</p>
             <Button onClick={() => refetch()} variant="outline" className="w-fit font-black rounded-xl h-14 px-8 border-destructive/20 bg-background hover:bg-destructive/10 shadow-lg">Retry Now</Button>
           </AlertDescription>
         </Alert>
@@ -217,8 +272,8 @@ export default function DashboardOverview() {
         </Card>
       ) : (
         <div className="grid gap-8 grid-cols-1 lg:grid-cols-2">
-          {references.map((ref: any) => {
-            const details = ref.details || {};
+          {references.map((ref) => {
+            const details: CcmsSnapshot = ref.details || {};
             const bill = details.billingInfo?.basicInfo;
             const feeder = details.outageInfo;
             const consumer = details.consumerInfo;
