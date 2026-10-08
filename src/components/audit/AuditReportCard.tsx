@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ShieldCheck, ShieldAlert, Lightbulb, Info, TrendingDown, AlertTriangle, ScrollText, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ShieldCheck, ShieldAlert, Lightbulb, Info, TrendingDown, AlertTriangle, ScrollText, Loader2, Gauge } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -89,6 +90,7 @@ function MetricRow({ label, value }: { label: string; value: string }) {
 }
 
 export function AuditReportCard({ billData, auditFindings }: AuditReportCardProps) {
+  const router = useRouter();
   const isVerified = auditFindings.status === 'verified';
   const hasDiscrepancy =
     !isVerified && Math.abs(auditFindings.discrepancyAmount) >= 1;
@@ -394,6 +396,21 @@ export function AuditReportCard({ billData, auditFindings }: AuditReportCardProp
           </CardContent>
         </Card>
       )}
+
+      {/* Deep-link into the slab simulator, seeded with this bill's usage */}
+      <Button
+        onClick={() =>
+          router.push(
+            `/dashboard/simulator?units=${Math.round(
+              billData.consumption.totalUnits
+            )}&protected=${billData.tariff.isProtected ? 'true' : 'false'}`
+          )
+        }
+        className="w-full h-14 px-8 bg-foreground text-background hover:opacity-90 font-black text-xs uppercase tracking-[0.2em] rounded-[2rem] shadow-lg transition-all active:scale-[0.99] border-0 gap-3"
+      >
+        <Gauge className="h-5 w-5 text-primary" />
+        Simulate &amp; Guard 200U Cliff
+      </Button>
 
       {/* Parser warnings */}
       {billData.warnings.length > 0 && (

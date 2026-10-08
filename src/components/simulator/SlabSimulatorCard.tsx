@@ -50,10 +50,24 @@ function formatPkr(value: number): string {
   })}`;
 }
 
-export function SlabSimulatorCard() {
-  const [currentUnits, setCurrentUnits] = useState(120);
+export interface SlabSimulatorCardProps {
+  /** Seeds units consumed, used by the audit deep-link. */
+  initialUnits?: number;
+  /** Seeds protected status, used by the audit deep-link. */
+  initialIsProtected?: boolean;
+}
+
+export function SlabSimulatorCard({
+  initialUnits,
+  initialIsProtected,
+}: SlabSimulatorCardProps = {}) {
+  const [currentUnits, setCurrentUnits] = useState(() =>
+    typeof initialUnits === 'number' && Number.isFinite(initialUnits)
+      ? Math.max(0, Math.min(MAX_UNITS_INPUT, Math.round(initialUnits)))
+      : 120
+  );
   const [daysElapsed, setDaysElapsed] = useState(15);
-  const [isProtected, setIsProtected] = useState(true);
+  const [isProtected, setIsProtected] = useState(initialIsProtected ?? true);
 
   const impact = useMemo(() => {
     const projected = calculateProjectedUnits(currentUnits, daysElapsed);
