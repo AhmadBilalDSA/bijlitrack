@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, ShieldAlert, Lightbulb, Info, TrendingDown, AlertTriangle, ScrollText, Loader2, Gauge } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Lightbulb, Info, TrendingDown, AlertTriangle, ScrollText, Loader2, Gauge, Flame } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -99,6 +99,10 @@ export function AuditReportCard({ billData, auditFindings }: AuditReportCardProp
   const [disputeLetter, setDisputeLetter] = useState<string | null>(null);
   const [disputeError, setDisputeError] = useState<string | null>(null);
 
+  const [isRoasting, setIsRoasting] = useState(false);
+  const [roast, setRoast] = useState<string | null>(null);
+  const [roastError, setRoastError] = useState<string | null>(null);
+
   // Disputes are only meaningful when money or rule violations are in play.
   // Purely informational findings do not justify a petition.
   const actionableFindings = auditFindings.findings.filter(
@@ -152,6 +156,60 @@ export function AuditReportCard({ billData, auditFindings }: AuditReportCardProp
       setIsGenerating(false);
     }
   };
+
+  const handleRoast = async () => {
+    setIsRoasting(true);
+    setRoastError(null);
+    try {
+      const res = await fetch('/api/audit/roast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          totalUnits: billData.consumption.totalUnits,
+          totalAmount: billData.financialBreakdown.totalAmount,
+          disco: billData.consumer.disco,
+          isProtected: billData.tariff.isProtected,
+          billingMonth: billData.consumer.billingMonth,
+        }),
+      });
+
+      const data = (await res.json()) as {
+        success: boolean;
+        roast?: string;
+        error?: string;
+      };
+
+      if (!res.ok || !data.success || !data.roast) {
+        setRoastError(data.error || 'Could not generate the roast.');
+        return;
+      }
+
+      setRoast(data.roast);
+    } catch (err: unknown) {
+      setRoastError(
+        err instanceof Error ? err.message : 'Network error while roasting your bill.'
+      );
+    } finally {
+      setIsRoasting(false);
+    }
+  };
+
+  // The API returns the roast followed by a "Tips to cut your bill:" section.
+  // Splitting on that marker lets the two halves get distinct treatments.
+  const roastParts = roast
+    ? (() => {
+        const marker = /tips to cut your bill:/i.exec(roast);
+        if (!marker) return { punchline: roast.trim(), tips: [] as string[] };
+        return {
+          punchline: roast.slice(0, marker.index).trim(),
+          tips: roast
+            .slice(marker.index + marker[0].length)
+            .split('\n')
+            .map((line) => line.replace(/^[-*\s]+/, '').trim())
+            .filter(Boolean),
+        };
+      })()
+    : null;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -246,6 +304,82 @@ export function AuditReportCard({ billData, auditFindings }: AuditReportCardProp
             </div>
           </div>
         </CardContent>
+      </Card>
+
+      {/* Bill roast */}
+      <Card className="border-2 border-orange-500/25 bg-orange-500/5 overflow-hidden rounded-[3rem]">
+        <CardHeader className="p-6 sm:p-10 border-b border-orange-500/15 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <CardTitle className="text-xl font-black tracking-tighter uppercase">
+              Bill Roast
+            </CardTitle>
+            <CardDescription className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest mt-1">
+              Claude reads your consumption and judges it lovingly
+            </CardDescription>
+          </div>
+
+          <Button
+            onClick={handleRoast}
+            disabled={isRoasting}
+            className="h-12 px-7 bg-orange-500 hover:bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-md transition-all active:scale-95 border-0 gap-2 shrink-0 disabled:opacity-60"
+          >
+            {isRoasting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Flame className="h-4 w-4" />
+            )}
+            {isRoasting ? 'Roasting...' : 'Roast My Bill'}
+          </Button>
+        </CardHeader>
+
+        {roastError && (
+          <CardContent className="p-6 sm:p-10 pt-6">
+            <Alert variant="destructive" className="rounded-[2rem] p-6">
+              <AlertTriangle className="h-5 w-5" />
+              <div className="ml-3">
+                <AlertTitle className="text-xs font-black uppercase tracking-widest">
+                  Roast Failed
+                </AlertTitle>
+                <AlertDescription className="text-xs font-medium mt-1">
+                  {roastError}
+                </AlertDescription>
+              </div>
+            </Alert>
+          </CardContent>
+        )}
+
+        {roastParts && (
+          <CardContent className="p-6 sm:p-10 space-y-6">
+            <p className="text-base sm:text-lg font-bold leading-relaxed text-foreground">
+              {roastParts.punchline}
+            </p>
+
+            {roastParts.tips.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600 dark:text-orange-400">
+                  Tips to cut your bill
+                </p>
+                <ul className="space-y-2">
+                  {roastParts.tips.map((tip, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-3 p-3.5 rounded-xl bg-background/60 border border-orange-500/15"
+                    >
+                      <Flame className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+                      <span className="text-xs font-medium leading-relaxed text-muted-foreground">
+                        {tip}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/50">
+              Generated by Claude. Comedy only, not a bill assessment.
+            </p>
+          </CardContent>
+        )}
       </Card>
 
       {/* Findings */}

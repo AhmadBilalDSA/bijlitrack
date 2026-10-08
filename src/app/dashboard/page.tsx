@@ -11,6 +11,7 @@ import { Search, Activity, CalendarClock, Zap, Receipt, MapPin, AlertCircle, Arr
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { OutageRadarCard } from '@/components/radar/OutageRadarCard';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -189,6 +190,8 @@ export default function DashboardOverview() {
           </Button>
         </Link>
       </div>
+
+      <OutageRadarCard />
 
       {!hasReferences ? (
         <Card className="text-center py-24 border-dashed border-2 border-border bg-card shadow-sm rounded-3xl group hover:border-primary/20 transition-colors">
