@@ -1,10 +1,13 @@
 'use client';
 
-import { ShieldCheck, ShieldAlert, Lightbulb, Info, TrendingDown, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { ShieldCheck, ShieldAlert, Lightbulb, Info, TrendingDown, AlertTriangle, ScrollText, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
+import { DisputeLetterModal } from '@/components/audit/DisputeLetterModal';
 
 interface Finding {
   code: string;
@@ -89,6 +92,64 @@ export function AuditReportCard({ billData, auditFindings }: AuditReportCardProp
   const isVerified = auditFindings.status === 'verified';
   const hasDiscrepancy =
     !isVerified && Math.abs(auditFindings.discrepancyAmount) >= 1;
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [disputeLetter, setDisputeLetter] = useState<string | null>(null);
+  const [disputeError, setDisputeError] = useState<string | null>(null);
+
+  // Disputes are only meaningful when money or rule violations are in play.
+  // Purely informational findings do not justify a petition.
+  const actionableFindings = auditFindings.findings.filter(
+    (f) => f.severity === 'critical' || f.severity === 'warning'
+  );
+  const canDispute =
+    actionableFindings.length > 0 || auditFindings.discrepancyAmount > 0;
+
+  const handleGenerateDispute = async () => {
+    setIsGenerating(true);
+    setDisputeError(null);
+    try {
+      const res = await fetch('/api/audit/generate-dispute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          billData: {
+            consumerName: billData.consumer.name,
+            referenceNo: billData.consumer.referenceNo,
+            disco: billData.consumer.disco,
+            billingMonth: billData.consumer.billingMonth,
+            totalAmount: billData.financialBreakdown.totalAmount,
+          },
+          auditFindings: {
+            discrepancyAmount: auditFindings.discrepancyAmount,
+            issuesDetected: actionableFindings.map((f) => `${f.title}: ${f.detail}`),
+            recommendedAction: hasDiscrepancy
+              ? `Correct the billed charges and credit the over-recovered amount of Rs ${Math.abs(auditFindings.discrepancyAmount).toLocaleString('en-PK')} to the next billing cycle.`
+              : 'Review and correct the disputed line items in the next billing cycle.',
+          },
+        }),
+      });
+
+      const data = (await res.json()) as {
+        success: boolean;
+        disputeLetter?: string;
+        error?: string;
+      };
+
+      if (!res.ok || !data.success || !data.disputeLetter) {
+        setDisputeError(data.error || 'Could not draft the dispute notice.');
+        return;
+      }
+
+      setDisputeLetter(data.disputeLetter);
+    } catch (err: unknown) {
+      setDisputeError(
+        err instanceof Error ? err.message : 'Network error while generating the notice.'
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -187,13 +248,28 @@ export function AuditReportCard({ billData, auditFindings }: AuditReportCardProp
 
       {/* Findings */}
       <Card className="border-border shadow-2xl shadow-foreground/5 overflow-hidden rounded-[3rem]">
-        <CardHeader className="p-6 sm:p-10 border-b border-border bg-muted/20">
-          <CardTitle className="text-xl font-black tracking-tighter uppercase">
-            Audit Findings
-          </CardTitle>
-          <CardDescription className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest mt-1">
-            Cross-checked against NEPRA protected-slab and statutory tax rules
-          </CardDescription>
+        <CardHeader className="p-6 sm:p-10 border-b border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <CardTitle className="text-xl font-black tracking-tighter uppercase">
+              Audit Findings
+            </CardTitle>
+            <CardDescription className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest mt-1">
+              Cross-checked against NEPRA protected-slab and statutory tax rules
+            </CardDescription>
+          </div>
+
+          <Button
+            onClick={handleGenerateDispute}
+            disabled={!canDispute || isGenerating}
+            className="h-12 px-7 bg-primary hover:opacity-90 text-primary-foreground font-bold text-[10px] uppercase tracking-widest rounded-xl shadow-md transition-all active:scale-95 border-0 gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
+          >
+            {isGenerating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ScrollText className="h-4 w-4" />
+            )}
+            {isGenerating ? 'Drafting...' : 'Generate Formal Dispute Notice'}
+          </Button>
         </CardHeader>
         <CardContent className="p-6 sm:p-10 space-y-4">
           {auditFindings.findings.length === 0 ? (
@@ -338,9 +414,36 @@ export function AuditReportCard({ billData, auditFindings }: AuditReportCardProp
         </Alert>
       )}
 
+      {disputeError && (
+        <Alert variant="destructive" className="rounded-[2rem] p-6">
+          <AlertTriangle className="h-5 w-5" />
+          <div className="ml-3">
+            <AlertTitle className="text-xs font-black uppercase tracking-widest">
+              Dispute Notice Failed
+            </AlertTitle>
+            <AlertDescription className="text-xs font-medium mt-1">
+              {disputeError}
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
+
       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/50 text-center leading-relaxed">
         {auditFindings.disclaimer}
       </p>
+
+      {disputeLetter && (
+        <DisputeLetterModal
+          open={disputeLetter !== null}
+          onOpenChange={(next) => {
+            if (!next) setDisputeLetter(null);
+          }}
+          disputeLetter={disputeLetter}
+          consumerName={billData.consumer.name}
+          referenceNo={billData.consumer.referenceNo}
+          billingMonth={billData.consumer.billingMonth}
+        />
+      )}
     </div>
   );
 }
